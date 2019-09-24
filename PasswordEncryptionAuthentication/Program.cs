@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Users;
 
 namespace PasswordEncryptionAuthentication
@@ -26,12 +27,31 @@ namespace PasswordEncryptionAuthentication
             {                
                 Console.Write("Enter a desired user name: ");
                 string userName = Console.ReadLine();
+
                 if (!userList.Contains(userName))
                 {
-                    userList.Add(userName);
+                    string userPassword = "";
                     Console.Write("Enter a desired password: ");
-                    string userPassword = Console.ReadLine();
-                    u[userName] = userPassword;
+                    bool flag = true;
+
+                    while (flag)
+                    {
+                        char c = Console.ReadKey(true).KeyChar;
+                        if (c == '\r')
+                        {
+                            flag = false;
+                        }
+                        else
+                            userPassword += c.ToString();
+                    }
+                    userList.Add(userName);
+                    u[userName] = UserList.Encrypt(userPassword);
+
+                    using (var db = new GroupAssignmentContext())
+                    {
+                        db.Users.Add(new Users { UserName = userName, Password = u[userName] });
+                        db.SaveChanges();
+                    }
                 }
                 else
                 {
@@ -125,6 +145,12 @@ namespace PasswordEncryptionAuthentication
                 string userName = Console.ReadLine();
                 u.DeleteUser(userName);
                 userList.Remove(userName);
+
+                using (var db = new GroupAssignmentContext())
+                {
+                    db.Users.RemoveRange(db.Users.Where(x => x.UserName == userName));
+                    db.SaveChanges();
+                }
             }
             if (userInput == "4")
             {
@@ -140,8 +166,17 @@ namespace PasswordEncryptionAuthentication
             Console.ReadKey();
             AdminInterface();
         }
+
         static void Main(string[] args)
         {
+            using (var db = new GroupAssignmentContext())
+            {
+                foreach (var user in db.Users)
+                {
+                    userList.Add(user.UserName);
+                    u[user.UserName] = user.Password;
+                }
+            }                
             UserInterface();
         }
     }
